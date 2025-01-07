@@ -13,14 +13,14 @@ const layout = (customerId, content) => html`
     <body>
       <nav class="navbar">
         <div class="nav">
-          <a href="/?customer=${customerId}">Dashboard</a>
-          <a href="/auth-rates?customer=${customerId}">Auth Rates</a>
-          <a href="/top-senders?customer=${customerId}">Top Senders</a>
-          <a href="/geo-distribution?customer=${customerId}">Geo Distribution</a>
-          <a href="/compliance-trends?customer=${customerId}">Compliance</a>
-          <a href="/detailed-reports?customer=${customerId}">Reports</a>
-          <a href="/failure-analysis?customer=${customerId}">Failures</a>
-          <a href="/domain-summary?customer=${customerId}">Domains</a>
+          <a href="/dashboard/?customer=${customerId}">Dashboard</a>
+          <a href="/dashboard/auth-rates?customer=${customerId}">Auth Rates</a>
+          <a href="/dashboard/top-senders?customer=${customerId}">Top Senders</a>
+          <a href="/dashboard/geo-distribution?customer=${customerId}">Geo Distribution</a>
+          <a href="/dashboard/compliance-trends?customer=${customerId}">Compliance</a>
+          <a href="/dashboard/detailed-reports?customer=${customerId}">Reports</a>
+          <a href="/dashboard/failure-analysis?customer=${customerId}">Failures</a>
+          <a href="/dashboard/domain-summary?customer=${customerId}">Domains</a>
         </div>
       </nav>
       <main class="container">
@@ -31,7 +31,7 @@ const layout = (customerId, content) => html`
 `;
 
 // Auth middleware
-app.use('*', async (c, next) => {
+app.use('/dashboard/*', async (c, next) => {
   const customerId = c.req.query('customer');
   if (!customerId) {
     return c.text('Missing customer parameter', 400);
@@ -73,7 +73,7 @@ app.onError((err, c) => {
   `, 500);
 });
 
-app.get('/', async (c) => {
+app.get('/dashboard', async (c) => {
   const customerId = c.get('customerId');
   const stats = await fetchData(c.env, `
     SELECT 
@@ -113,7 +113,7 @@ app.get('/', async (c) => {
 });
 
 // Endpoint: Authentication success/failure rates over time
-app.get('/auth-rates', async (c) => {
+app.get('/dashboard/auth-rates', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT date_range_begin, date_range_end, COUNT(*) as total, 
@@ -145,7 +145,7 @@ app.get('/auth-rates', async (c) => {
 });
 
 // Endpoint: Top sending IP addresses and their performance
-app.get('/top-senders', async (c) => {
+app.get('/dashboard/top-senders', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT source_ip, COUNT(*) as total, 
@@ -177,7 +177,7 @@ app.get('/top-senders', async (c) => {
 });
 
 // Endpoint: Geographic distribution of email sources
-app.get('/geo-distribution', async (c) => {
+app.get('/dashboard/geo-distribution', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT source_ip, COUNT(*) as total
@@ -231,7 +231,7 @@ app.get('/geo-distribution', async (c) => {
 });
 
 // Endpoint: Compliance trends and policy effectiveness
-app.get('/compliance-trends', async (c) => {
+app.get('/dashboard/compliance-trends', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT date_range_begin, date_range_end, COUNT(*) as total, 
@@ -262,7 +262,7 @@ app.get('/compliance-trends', async (c) => {
 });
 
 // New endpoint: Detailed failure analysis
-app.get('/failure-analysis', async (c) => {
+app.get('/dashboard/failure-analysis', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT 
@@ -313,7 +313,7 @@ app.get('/failure-analysis', async (c) => {
 });
 
 // New endpoint: Domain summary
-app.get('/domain-summary', async (c) => {
+app.get('/dashboard/domain-summary', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT 
@@ -359,7 +359,7 @@ app.get('/domain-summary', async (c) => {
 });
 
 // New endpoint: Detailed reports with filtering
-app.get('/detailed-reports', async (c) => {
+app.get('/dashboard/detailed-reports', async (c) => {
   const customerId = c.get('customerId');
   const startDate = c.req.query('start') || '';
   const endDate = c.req.query('end') || '';
