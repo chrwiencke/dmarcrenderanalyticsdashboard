@@ -9,7 +9,7 @@ const layout = (customerId, content) => html`
   <html>
     <head>
       <title>DMARC Analytics Dashboard</title>
-      <link rel="stylesheet" type="text/css" href="styles.css">
+      <link rel="stylesheet" type="text/css" href="https://utfs.io/f/tU8vX4DFrVItTibqvzxGWgkIHxCqj4wf6byiNc71MoKQdEle">
     </head>
     <body>
       <nav class="navbar">
