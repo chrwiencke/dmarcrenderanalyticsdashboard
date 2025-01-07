@@ -3,7 +3,6 @@ import { html } from 'hono/html';
 
 const app = new Hono();
 
-// Layout component with consistent styling
 const layout = (customerId, content) => html`
   <!DOCTYPE html>
   <html>
@@ -74,13 +73,7 @@ app.onError((err, c) => {
   `, 500);
 });
 
-// Update main dashboard with stats cards and charts
-function safeStringify(obj) {
-  return JSON.stringify(obj)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026');
-}
+
 
 app.get('/', async (c) => {
   const customerId = c.get('customerId');
