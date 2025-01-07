@@ -234,22 +234,22 @@ app.get('/geo-distribution', async (c) => {
 app.get('/compliance-trends', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
-    SELECT date_range_begin, COUNT(*) as total, 
+    SELECT date_range_begin, date_range_end, COUNT(*) as total, 
            SUM(CASE WHEN disposition = 1 THEN 1 ELSE 0 END) as compliant,
            SUM(CASE WHEN disposition = 0 THEN 1 ELSE 0 END) as non_compliant
     FROM dmarc_reports
     WHERE customer_id = ?1
-    GROUP BY date_range_begin
+    GROUP BY date_range_begin, date_range_end
     ORDER BY date_range_begin
   `, [customerId]);
   
   const content = html`
     <h1>Compliance Trends and Policy Effectiveness</h1>
     <table>
-      <tr><th>Date</th><th>Total</th><th>Compliant</th><th>Non-Compliant</th></tr>
+      <tr><th>Date Range</th><th>Total</th><th>Compliant</th><th>Non-Compliant</th></tr>
       ${data.map(row => html`
         <tr>
-          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()}</td>
+          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()} - ${new Date(row.date_range_end * 1000).toLocaleDateString()}</td>
           <td>${row.total}</td>
           <td>${row.compliant}</td>
           <td>${row.non_compliant}</td>
