@@ -73,8 +73,6 @@ app.onError((err, c) => {
   `, 500);
 });
 
-
-
 app.get('/', async (c) => {
   const customerId = c.get('customerId');
   const stats = await fetchData(c.env, `
@@ -118,12 +116,12 @@ app.get('/', async (c) => {
 app.get('/auth-rates', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
-    SELECT date_range_begin, COUNT(*) as total, 
-           SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) as success,
-           SUM(CASE WHEN dkim_result = 0 OR spf_result = 0 THEN 1 ELSE 0 END) as failure
+    SELECT date_range_begin, date_range_end, COUNT(*) as total, 
+            SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) as success,
+            SUM(CASE WHEN dkim_result = 0 OR spf_result = 0 THEN 1 ELSE 0 END) as failure
     FROM dmarc_reports
     WHERE customer_id = ?1
-    GROUP BY date_range_begin
+    GROUP BY date_range_begin, date_range_end
     ORDER BY date_range_begin
     LIMIT 30
   `, [customerId]);
@@ -131,10 +129,10 @@ app.get('/auth-rates', async (c) => {
   const content = html`
     <h1>Authentication Success/Failure Rates</h1>
     <table>
-      <tr><th>Date</th><th>Total</th><th>Success</th><th>Failure</th></tr>
+      <tr><th>Date Range</th><th>Total</th><th>Success</th><th>Failure</th></tr>
       ${data.map(row => html`
         <tr>
-          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()}</td>
+          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()} - ${new Date(row.date_range_end * 1000).toLocaleDateString()}</td>
           <td>${row.total.toLocaleString()}</td>
           <td class="success">${row.success.toLocaleString()}</td>
           <td class="error">${row.failure.toLocaleString()}</td>
