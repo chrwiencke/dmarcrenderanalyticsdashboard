@@ -186,12 +186,32 @@ app.get('/geo-distribution', async (c) => {
     GROUP BY source_ip
   `, [customerId]);
   
-  // Placeholder for geographic data
-  const geoData = data.map(row => ({
-    ip: row.source_ip,
-    total: row.total,
-    location: 'Unknown' // Replace with actual location data
-  }));
+  async function getLocationData(ip) {
+    try {
+      const response = await fetch(
+        `http://ip-api.com/json/${ip}?fields=country`,
+        { timeout: 5000 }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const locationData = await response.json();
+      return locationData.country;
+    } catch (error) {
+      console.error(`Error fetching location for IP ${ip}:`, error);
+      return 'Unknown';
+    }
+  }
+  
+  const geoData = await Promise.all(
+    data.map(async row => ({
+      ip: row.source_ip,
+      total: row.total,
+      location: await getLocationData(row.source_ip)
+    }))
+  );
   
   const content = html`
     <h1>Geographic Distribution of Email Sources</h1>
@@ -348,6 +368,7 @@ app.get('/detailed-reports', async (c) => {
   let query = `
     SELECT 
       date_range_begin,
+      date_range_end,
       header_from,
       source_ip,
       dkim_result,
@@ -365,7 +386,7 @@ app.get('/detailed-reports', async (c) => {
     params.push(Math.floor(new Date(startDate).getTime() / 1000));
   }
   if (endDate) {
-    query += ' AND date_range_begin <= ?3';
+    query += ' AND date_range_end <= ?3';
     params.push(Math.floor(new Date(endDate).getTime() / 1000));
   }
   if (domain) {
@@ -399,7 +420,7 @@ app.get('/detailed-reports', async (c) => {
       </tr>
       ${data.map(row => html`
         <tr>
-          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()}</td>
+          <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()} - ${new Date(row.date_range_end * 1000).toLocaleDateString()}</td>
           <td>${row.header_from}</td>
           <td>${row.source_ip}</td>
           <td>${row.dkim_result ? '✓' : '✗'}</td>
