@@ -4,7 +4,7 @@ import { html } from 'hono/html';
 const app = new Hono();
 
 const layout = (customerId, content) => html`
-  <!DOCTYPE html>
+<!DOCTYPE html>
   <html>
     <head>
       <title>DMARC Analytics Dashboard</title>
@@ -13,7 +13,7 @@ const layout = (customerId, content) => html`
     <body>
       <nav class="navbar">
         <div class="nav">
-          <a href="/dashboard/?customer=${customerId}">Dashboard</a>
+          <a href="/dashboard?customer=${customerId}">Dashboard</a>
           <a href="/dashboard/auth-rates?customer=${customerId}">Auth Rates</a>
           <a href="/dashboard/top-senders?customer=${customerId}">Top Senders</a>
           <a href="/dashboard/geo-distribution?customer=${customerId}">Geo Distribution</a>
@@ -29,6 +29,18 @@ const layout = (customerId, content) => html`
     </body>
   </html>
 `;
+
+// Types
+const DispositionType = {
+  none: 1,
+  quarantine: 2,
+  reject: 3
+};
+
+const DMARCResultType = {
+  pass: 1,
+  fail: 2
+};
 
 // Auth middleware
 app.use('/dashboard/*', async (c, next) => {
@@ -398,6 +410,19 @@ app.get('/dashboard/detailed-reports', async (c) => {
   
   const data = await fetchData(c.env, query, params);
   
+  const formatDisposition = (disposition) => {
+    switch (disposition) {
+      case DispositionType.reject:
+        return '✓ Reject';
+      case DispositionType.quarantine:
+        return '⚠️ Quarantine';
+      case DispositionType.none:
+        return '✗ None';
+      default:
+        return '? Unknown';
+    }
+  };
+
   const content = html`
     <h1>Detailed Reports</h1>
     <form class="filter-form">
@@ -423,9 +448,9 @@ app.get('/dashboard/detailed-reports', async (c) => {
           <td>${new Date(row.date_range_begin * 1000).toLocaleDateString()} - ${new Date(row.date_range_end * 1000).toLocaleDateString()}</td>
           <td>${row.header_from}</td>
           <td>${row.source_ip}</td>
-          <td>${row.dkim_result ? '✓' : '✗'}</td>
-          <td>${row.spf_result ? '✓' : '✗'}</td>
-          <td>${row.disposition}</td>
+          <td>${row.dkim_result === DMARCResultType.pass ? '✓' : '✗'}</td>
+          <td>${row.spf_result === DMARCResultType.pass ? '✓' : '✗'}</td>
+          <td>${formatDisposition(row.disposition)}</td>
           <td>${row.policy_override_type || 'None'}</td>
           <td>${row.error || 'None'}</td>
         </tr>
