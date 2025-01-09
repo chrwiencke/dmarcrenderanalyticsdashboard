@@ -7,8 +7,6 @@ compatibility_flags = ["nodejs_compat"]
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
 # Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
-[vars]
-JWT_SECRET_KEY = "secret"
 
 [observability]
 enabled = true

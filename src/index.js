@@ -55,7 +55,7 @@ app.use('/dashboard/*', async (c, next) => {
   }
 
   try {
-    const decodedPayload = await verify(tokenToVerify, "secret")
+    const decodedPayload = await verify(tokenToVerify, c.env.JWT_SECRET_KEY)
     
     if (!decodedPayload.customerId) {
       console.log(('Invalid token: missing customer ID', 400))
@@ -67,7 +67,7 @@ app.use('/dashboard/*', async (c, next) => {
     await next()
   } catch (error) {
     console.error('Token verification failed:', error)
-    return c.text('Invalid authentication token', 401)
+    return c.redirect('/logout', 301)
   }
 })
 
@@ -522,7 +522,7 @@ app.post('/login', async (c) => {
   const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
 
   if (password === accountPassword) {
-    const token = await sign({ customerId }, 'secret');
+    const token = await sign({ customerId }, c.env.JWT_SECRET_KEY);
 
     setCookie(c, 'jwt', token, { httpOnly: true });
     return c.redirect(`/dashboard/`);
@@ -569,7 +569,7 @@ app.post('/register', async (c) => {
   if (password) {
     await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
 
-    const token = await sign({ customerId }, 'secret', { expiresIn: '24h' });
+    const token = await sign({ customerId }, c.env.JWT_SECRET_KEY, { expiresIn: '24h' });
 
     setCookie(c, 'jwt', token, {
         httpOnly: true,
@@ -615,7 +615,7 @@ app.get('/', (c) => {
             <div class="space-x-6">
                 <a href="#features" class="hover:text-blue-200">Features</a>
                 <a href="#how-it-works" class="hover:text-blue-200">How It Works</a>
-                <a href="#dashboard" class="hover:text-blue-200">Dashboard</a>
+                <a href="/dashboard" class="hover:text-blue-200">Dashboard</a>
                 <a href="/login" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50">Login</a>
             </div>
         </nav>
@@ -625,7 +625,7 @@ app.get('/', (c) => {
             <div class="max-w-3xl">
                 <h1 class="text-5xl font-bold mb-6">Secure Your Email Domain with Powerful DMARC Management</h1>
                 <p class="text-xl mb-8">Protect your brand and improve email deliverability with our comprehensive DMARC analysis and reporting solution.</p>
-                <a href="#signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Get Started Free</a>
+                <a href="/register" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Get Started Free</a>
             </div>
         </div>
     </header>
