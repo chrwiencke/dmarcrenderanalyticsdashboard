@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { html } from 'hono/html';
+import { jwt, decode, sign, verify } from 'hono/jwt';
+import { getCookie, getSignedCookie, setCookie, setSignedCookie, deleteCookie, } from 'hono/cookie'
 
 const app = new Hono();
 
-const layout = (customerId, content) => html`
+const layout = (content) => html`
 <!DOCTYPE html>
   <html>
     <head>
@@ -13,14 +15,14 @@ const layout = (customerId, content) => html`
     <body>
       <nav class="navbar">
         <div class="nav">
-          <a href="/dashboard?customer=${customerId}">Dashboard</a>
-          <a href="/dashboard/auth-rates?customer=${customerId}">Auth Rates</a>
-          <a href="/dashboard/top-senders?customer=${customerId}">Top Senders</a>
-          <a href="/dashboard/geo-distribution?customer=${customerId}">Geo Distribution</a>
-          <a href="/dashboard/compliance-trends?customer=${customerId}">Compliance</a>
-          <a href="/dashboard/detailed-reports?customer=${customerId}">Reports</a>
-          <a href="/dashboard/failure-analysis?customer=${customerId}">Failures</a>
-          <a href="/dashboard/domain-summary?customer=${customerId}">Domains</a>
+          <a href="/dashboard/">Dashboard</a>
+          <a href="/dashboard/auth-rates">Auth Rates</a>
+          <a href="/dashboard/top-senders">Top Senders</a>
+          <a href="/dashboard/geo-distribution">Geo Distribution</a>
+          <a href="/dashboard/compliance-trends">Compliance</a>
+          <a href="/dashboard/detailed-reports">Reports</a>
+          <a href="/dashboard/failure-analysis">Failures</a>
+          <a href="/dashboard/domain-summary">Domains</a>
         </div>
       </nav>
       <main class="container">
@@ -44,19 +46,27 @@ const DMARCResultType = {
 
 // Auth middleware
 app.use('/dashboard/*', async (c, next) => {
-  const customerId = c.req.query('customer');
-  if (!customerId) {
-    return c.text('Missing customer parameter', 400);
-  }
+  const tokenToVerify = getCookie(c, 'jwt')
   
-  const isValid = await c.env.DMARC_DOMAINS.get(customerId);
-  if (!isValid) {
-    return c.text('Invalid customer', 401);
+  if (!tokenToVerify) {
+    return c.text('Authentication required', 401)
   }
-  
-  c.set('customerId', customerId);
-  await next();
-});
+
+  try {
+    const decodedPayload = await verify(tokenToVerify, "secret")
+    
+    if (!decodedPayload.customerId) {
+      return c.text('Invalid token: missing customer ID', 400)
+    }
+    
+    c.set('customerId', decodedPayload.customerId)
+    
+    await next()
+  } catch (error) {
+    console.error('Token verification failed:', error)
+    return c.text('Invalid authentication token', 401)
+  }
+})
 
 // Helper function to fetch data from the database
 async function fetchData(env, query, params) {
@@ -85,7 +95,7 @@ app.onError((err, c) => {
   `, 500);
 });
 
-app.get('/dashboard', async (c) => {
+app.get('/dashboard/', async (c) => {
   const customerId = c.get('customerId');
   const stats = await fetchData(c.env, `
     SELECT 
@@ -121,12 +131,13 @@ app.get('/dashboard', async (c) => {
     </div>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // Endpoint: Authentication success/failure rates over time
 app.get('/dashboard/auth-rates', async (c) => {
   const customerId = c.get('customerId');
+
   const data = await fetchData(c.env, `
     SELECT date_range_begin, date_range_end, COUNT(*) as total, 
             SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) as success,
@@ -153,7 +164,7 @@ app.get('/dashboard/auth-rates', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // Endpoint: Top sending IP addresses and their performance
@@ -185,7 +196,7 @@ app.get('/dashboard/top-senders', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // Endpoint: Geographic distribution of email sources
@@ -239,7 +250,7 @@ app.get('/dashboard/geo-distribution', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // Endpoint: Compliance trends and policy effectiveness
@@ -270,7 +281,7 @@ app.get('/dashboard/compliance-trends', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // New endpoint: Detailed failure analysis
@@ -321,7 +332,7 @@ app.get('/dashboard/failure-analysis', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // New endpoint: Domain summary
@@ -367,7 +378,7 @@ app.get('/dashboard/domain-summary', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
 });
 
 // New endpoint: Detailed reports with filtering
@@ -458,7 +469,30 @@ app.get('/dashboard/detailed-reports', async (c) => {
     </table>
   `;
   
-  return c.html(layout(customerId, content));
+  return c.html(layout(content));
+});
+
+app.get('/login', (c) => {
+  const form = html`
+    <h1>Login</h1>
+    <form method="POST" action="/login">
+      <label>Customer ID: <input name="customerId" /></label>
+      <label>Password: <input type="password" name="password" /></label>
+      <button type="submit">Login</button>
+    </form>
+  `;
+  return c.html(form);
+});
+
+app.post('/login', async (c) => {
+  const { customerId, password } = await c.req.parseBody();
+  if (password === 'test') {
+    const token = await sign({ customerId }, 'secret');
+
+    setCookie(c, 'jwt', token, { httpOnly: true });
+    return c.redirect('/dashboard/');
+  }
+  return c.text('Invalid credentials', 401);
 });
 
 export default {
