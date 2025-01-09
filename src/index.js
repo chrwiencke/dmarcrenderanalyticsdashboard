@@ -521,8 +521,6 @@ app.post('/login', async (c) => {
   const { customerId, password } = await c.req.parseBody();
   const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
 
-  console.log(accountPassword)
-
   if (password === accountPassword) {
     const token = await sign({ customerId }, 'secret');
 
