@@ -566,12 +566,15 @@ app.post('/register', async (c) => {
     return c.text('Customer ID already exist', 409)
   }
 
-  await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
-
   if (password) {
-    const token = await sign({ customerId }, 'secret');
+    await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
 
-    setCookie(c, 'jwt', token, { httpOnly: true });
+    const token = await sign({ customerId }, 'secret', { expiresIn: '24h' });
+
+    setCookie(c, 'jwt', token, {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60,
+    });
     return c.redirect(`/dashboard/config`);
   }
   return c.text('Invalid credentials', 401);
