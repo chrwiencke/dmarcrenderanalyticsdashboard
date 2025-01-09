@@ -18,7 +18,7 @@ const layout = (content) => html`
           <a href="/dashboard/">Dashboard</a>
           <a href="/dashboard/auth-rates">Auth Rates</a>
           <a href="/dashboard/top-senders">Top Senders</a>
-          <a href="/dashboard/geo-distribution">Geo Distribution</a>
+          <a href="/dashboard/geo-location">Geo Location</a>
           <a href="/dashboard/compliance-trends">Compliance</a>
           <a href="/dashboard/detailed-reports">Reports</a>
           <a href="/dashboard/failure-analysis">Failures</a>
@@ -67,7 +67,7 @@ app.use('/dashboard/*', async (c, next) => {
     await next()
   } catch (error) {
     console.error('Token verification failed:', error)
-    return c.redirect('/logout', 301)
+    return c.redirect('/logout');
   }
 })
 
@@ -203,7 +203,7 @@ app.get('/dashboard/top-senders', async (c) => {
 });
 
 // Endpoint: Geographic distribution of email sources
-app.get('/dashboard/geo-distribution', async (c) => {
+app.get('/dashboard/geo-location', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT source_ip, COUNT(*) as total
