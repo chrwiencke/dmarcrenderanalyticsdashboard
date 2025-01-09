@@ -51,14 +51,15 @@ app.use('/dashboard/*', async (c, next) => {
   
   if (!tokenToVerify) {
     console.log(('Authentication required', 401))
-    return c.redirect('/login');
+    return c.redirect('/logout');
   }
 
   try {
     const decodedPayload = await verify(tokenToVerify, "secret")
     
     if (!decodedPayload.customerId) {
-      return c.text('Invalid token: missing customer ID', 400)
+      console.log(('Invalid token: missing customer ID', 400))
+      return c.redirect('/logout');
     }
     
     c.set('customerId', decodedPayload.customerId)
