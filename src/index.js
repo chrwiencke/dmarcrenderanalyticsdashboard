@@ -517,19 +517,6 @@ app.get('/login', (c) => {
   return c.html(form);
 });
 
-app.post('/login', async (c) => {
-  const { customerId, password } = await c.req.parseBody();
-  const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
-
-  if (password === accountPassword) {
-    const token = await sign({ customerId }, c.env.JWT_SECRET_KEY);
-
-    setCookie(c, 'jwt', token, { httpOnly: true });
-    return c.redirect(`/dashboard/`);
-  }
-  return c.text('Invalid credentials', 401);
-});
-
 app.get('/register', (c) => {
   const form = html`
   <!DOCTYPE html>
@@ -569,13 +556,26 @@ app.post('/register', async (c) => {
   if (password) {
     await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
 
-    const token = await sign({ customerId }, c.env.JWT_SECRET_KEY, { expiresIn: '24h' });
+    const token = await sign({ customerId, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, }, c.env.JWT_SECRET_KEY);
 
     setCookie(c, 'jwt', token, {
         httpOnly: true,
         maxAge: 24 * 60 * 60,
     });
     return c.redirect(`/dashboard/config`);
+  }
+  return c.text('Invalid credentials', 401);
+});
+
+app.post('/login', async (c) => {
+  const { customerId, password } = await c.req.parseBody();
+  const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
+
+  if (password === accountPassword) {
+    const token = await sign({ customerId, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, }, c.env.JWT_SECRET_KEY);
+
+    setCookie(c, 'jwt', token, { httpOnly: true });
+    return c.redirect(`/dashboard/`);
   }
   return c.text('Invalid credentials', 401);
 });
@@ -740,7 +740,7 @@ app.get('/', (c) => {
         <div class="container mx-auto px-6 text-center">
             <h2 class="text-3xl font-bold mb-8">Ready to Secure Your Email Domain?</h2>
             <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of organizations using Huzz And Buzz for comprehensive DMARC management and email security.</p>
-            <a href="#signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Start Free Trial</a>
+            <a href="/signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Start Free Trial</a>
         </div>
     </section>
 
@@ -774,6 +774,7 @@ app.get('/', (c) => {
                         <li><a href="#about" class="hover:text-white">About Us</a></li>
                         <li><a href="#contact" class="hover:text-white">Contact</a></li>
                         <li><a href="#privacy" class="hover:text-white">Privacy Policy</a></li>
+                        <li><a href="https://donotshow.me" class="hover:text-white">Temp Email</a></li>
                     </ul>
                 </div>
             </div>
