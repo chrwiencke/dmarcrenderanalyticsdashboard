@@ -530,6 +530,53 @@ app.post('/login', async (c) => {
   return c.text('Invalid credentials', 401);
 });
 
+app.get('/register', (c) => {
+  const form = html`
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>DMARC Analytics Dashboard</title>
+      <link rel="stylesheet" type="text/css" href="https://utfs.io/f/tU8vX4DFrVItrPVq01O3zjgmsyVWNbB0HhXDRkYxZeiOq4nI">
+    </head>
+    <body>
+      <main class="container">
+        <form method="POST" action="/register" class="login-form">
+          <label>
+            Customer ID:
+            <input name="customerId" type="text" placeholder="Enter prefered customer ID" />
+          </label>
+          <label>
+            Password:
+            <input type="password" name="password" placeholder="Enter your password" />
+          </label>
+          <button type="submit">Register</button>
+        </form>
+      </main>
+    </body>
+  </html>
+  `;
+  return c.html(form);
+});
+
+app.post('/register', async (c) => {
+  const { customerId, password } = await c.req.parseBody();
+  const alreadyExists = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
+
+  if (alreadyExists) {
+    return c.text('Customer ID already exist', 409)
+  }
+
+  await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
+
+  if (password) {
+    const token = await sign({ customerId }, 'secret');
+
+    setCookie(c, 'jwt', token, { httpOnly: true });
+    return c.redirect(`/dashboard/config`);
+  }
+  return c.text('Invalid credentials', 401);
+});
+
 app.get('/logout', (c) => {
   setCookie(c, 'jwt', '', {
     httpOnly: true,
