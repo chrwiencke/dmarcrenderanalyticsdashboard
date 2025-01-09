@@ -23,6 +23,7 @@ const layout = (content) => html`
           <a href="/dashboard/detailed-reports">Reports</a>
           <a href="/dashboard/failure-analysis">Failures</a>
           <a href="/dashboard/domain-summary">Domains</a>
+          <a href="/logout">Logout</a>
         </div>
       </nav>
       <main class="container">
@@ -49,7 +50,8 @@ app.use('/dashboard/*', async (c, next) => {
   const tokenToVerify = getCookie(c, 'jwt')
   
   if (!tokenToVerify) {
-    return c.text('Authentication required', 401)
+    console.log(('Authentication required', 401))
+    return c.redirect('/login');
   }
 
   try {
@@ -493,6 +495,18 @@ app.post('/login', async (c) => {
     return c.redirect('/dashboard/');
   }
   return c.text('Invalid credentials', 401);
+});
+
+app.get('/logout', (c) => {
+  setCookie(c, 'jwt', '', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    path: '/',
+    expires: new Date(0)
+  });
+  
+  return c.redirect('/login');
 });
 
 export default {
