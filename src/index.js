@@ -105,12 +105,12 @@ app.get('/dashboard/', async (c) => {
       COUNT(*) as total_reports,
       COUNT(DISTINCT source_ip) as unique_ips,
       COUNT(DISTINCT header_from) as unique_domains,
-      SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as success_rate
+      COALESCE(SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0) as success_rate
     FROM dmarc_reports
     WHERE customer_id = ?1
   `, [customerId]);
 
-  const statsObj = stats.length > 0 ? stats[0] : { total_reports: 0, unique_ips: 0, unique_domains: 0, success_rate: 0 };
+  const statsObj = stats?.[0] ?? { total_reports: 0, unique_ips: 0, unique_domains: 0, success_rate: 0 };
 
   const content = html`
     <h1>DMARC Analytics Overview</h1>
