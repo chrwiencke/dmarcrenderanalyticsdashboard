@@ -19,5 +19,5 @@ database_name = "dmarc-reports"
 database_id = "4eb8c158-eb83-4492-999c-d94106ba10cb"
 
 [[kv_namespaces]]
-binding = "DMARC_DOMAINS"
-id = "cb2df4757ac04e179d17e80b5cf43e07"
+binding = "HUZZANDBUZZ_ACCOUNTS"
+id = "813ec6c73e6f4fbaad2f442a749a81b6"

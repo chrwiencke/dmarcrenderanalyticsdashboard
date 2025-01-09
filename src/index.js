@@ -10,7 +10,7 @@ const layout = (content) => html`
   <html>
     <head>
       <title>DMARC Analytics Dashboard</title>
-      <link rel="stylesheet" type="text/css" href="https://utfs.io/f/tU8vX4DFrVItTibqvzxGWgkIHxCqj4wf6byiNc71MoKQdEle">
+      <link rel="stylesheet" type="text/css" href="https://utfs.io/f/tU8vX4DFrVItrPVq01O3zjgmsyVWNbB0HhXDRkYxZeiOq4nI">
     </head>
     <body>
       <nav class="navbar">
@@ -475,25 +475,59 @@ app.get('/dashboard/detailed-reports', async (c) => {
   return c.html(layout(content));
 });
 
+app.get('/dashboard/config', async (c) => {
+  const customerId = c.get('customerId');
+
+  const content = html`
+    <h1>Strict Config:</h1>
+    <p>v=DMARC1; p=reject; rua=mailto:${customerId}@huzzand.buzz; pct=100; adkim=s; aspf=s;</p>
+    <br>
+    <h1>Less Strict Config:</h1>
+    <p>v=DMARC1; p=quarantine; rua=mailto:${customerId}@huzzand.buzz; pct=20; adkim=r; aspf=r;</p>
+  `;
+  
+  return c.html(layout(content));
+});
+
 app.get('/login', (c) => {
   const form = html`
-    <h1>Login</h1>
-    <form method="POST" action="/login">
-      <label>Customer ID: <input name="customerId" /></label>
-      <label>Password: <input type="password" name="password" /></label>
-      <button type="submit">Login</button>
-    </form>
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>DMARC Analytics Dashboard</title>
+      <link rel="stylesheet" type="text/css" href="https://utfs.io/f/tU8vX4DFrVItrPVq01O3zjgmsyVWNbB0HhXDRkYxZeiOq4nI">
+    </head>
+    <body>
+      <main class="container">
+        <form method="POST" action="/login" class="login-form">
+          <label>
+            Customer ID:
+            <input name="customerId" type="text" placeholder="Enter your customer ID" />
+          </label>
+          <label>
+            Password:
+            <input type="password" name="password" placeholder="Enter your password" />
+          </label>
+          <button type="submit">Login</button>
+        </form>
+      </main>
+    </body>
+  </html>
   `;
   return c.html(form);
 });
 
 app.post('/login', async (c) => {
   const { customerId, password } = await c.req.parseBody();
-  if (password === 'test') {
+  const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
+
+  console.log(accountPassword)
+
+  if (password === accountPassword) {
     const token = await sign({ customerId }, 'secret');
 
     setCookie(c, 'jwt', token, { httpOnly: true });
-    return c.redirect('/dashboard/');
+    return c.redirect(`/dashboard/`);
   }
   return c.text('Invalid credentials', 401);
 });
@@ -508,6 +542,201 @@ app.get('/logout', (c) => {
   });
   
   return c.redirect('/login');
+});
+
+app.get('/', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMARC Management - Huzz And Buzz</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- Header -->
+    <header class="gradient-bg text-white">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold">Huzz And Buzz</div>
+            <div class="space-x-6">
+                <a href="#features" class="hover:text-blue-200">Features</a>
+                <a href="#how-it-works" class="hover:text-blue-200">How It Works</a>
+                <a href="#dashboard" class="hover:text-blue-200">Dashboard</a>
+                <a href="/login" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50">Login</a>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="container mx-auto px-6 py-20">
+            <div class="max-w-3xl">
+                <h1 class="text-5xl font-bold mb-6">Secure Your Email Domain with Powerful DMARC Management</h1>
+                <p class="text-xl mb-8">Protect your brand and improve email deliverability with our comprehensive DMARC analysis and reporting solution.</p>
+                <a href="#signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Get Started Free</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">Comprehensive Email Security Made Simple</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Real-time Monitoring</h3>
+                    <p class="text-gray-600">Track email authentication attempts and identify potential security threats instantly.</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Detailed Analytics</h3>
+                    <p class="text-gray-600">Get comprehensive insights into your email authentication performance and security metrics.</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Geographic Insights</h3>
+                    <p class="text-gray-600">Visualize the global distribution of your email traffic and identify suspicious patterns.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">Get Started in Minutes</h2>
+            <div class="max-w-3xl mx-auto space-y-12">
+                <div class="flex items-start">
+                    <div class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">1</div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-semibold mb-2">Access Your Dedicated Email</h3>
+                        <p class="text-gray-600">Receive a unique email address linked to your account for collecting DMARC reports.</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">2</div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-semibold mb-2">Add DNS Record</h3>
+                        <p class="text-gray-600">Add a simple TXT record to your DNS settings:</p>
+                        <code class="bg-gray-100 px-4 py-2 rounded-lg block mt-2">
+                            Name: _dmarc<br>
+                            Value: v=DMARC1; p=quarantine; rua=mailto:customerid@huzzand.buzz;
+                        </code>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">3</div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-semibold mb-2">Access Your Dashboard</h3>
+                        <p class="text-gray-600">Log in with your customer ID to view comprehensive reports and analysis.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview Section -->
+    <section id="dashboard" class="py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">Powerful Dashboard Analytics</h2>
+            <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-8">
+                    <div>
+                        <h3 class="font-semibold mb-2">Authentication Overview</h3>
+                        <p class="text-gray-600">Track all email authentication attempts with detailed success and failure rates.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">IP Intelligence</h3>
+                        <p class="text-gray-600">Monitor all IP addresses sending emails on behalf of your domain.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Geographic Analysis</h3>
+                        <p class="text-gray-600">View global distribution of email origins with interactive maps.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Authentication Rates</h3>
+                        <p class="text-gray-600">Monitor the proportion of genuine emails being sent from your domain.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Detailed Reports</h3>
+                        <p class="text-gray-600">Access comprehensive error rate analysis and troubleshooting insights.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Domain Management</h3>
+                        <p class="text-gray-600">Track and manage all associated domains from a single interface.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="gradient-bg text-white py-20">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold mb-8">Ready to Secure Your Email Domain?</h2>
+            <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of organizations using Huzz And Buzz for comprehensive DMARC management and email security.</p>
+            <a href="#signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Start Free Trial</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12">
+                <div>
+                    <h3 class="text-white font-bold mb-4">Huzz And Buzz</h3>
+                    <p class="text-sm">Securing email communications through advanced DMARC management and analysis.</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#features" class="hover:text-white">Features</a></li>
+                        <li><a href="#pricing" class="hover:text-white">Pricing</a></li>
+                        <li><a href="#dashboard" class="hover:text-white">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#docs" class="hover:text-white">Documentation</a></li>
+                        <li><a href="#blog" class="hover:text-white">Blog</a></li>
+                        <li><a href="#support" class="hover:text-white">Support</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#about" class="hover:text-white">About Us</a></li>
+                        <li><a href="#contact" class="hover:text-white">Contact</a></li>
+                        <li><a href="#privacy" class="hover:text-white">Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-12 pt-8 text-sm text-center">
+                <p>&copy; 2025 Huzz And Buzz. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
+`);
 });
 
 export default {
