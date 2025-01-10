@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { html } from 'hono/html';
 import { jwt, decode, sign, verify } from 'hono/jwt';
 import { getCookie, getSignedCookie, setCookie, setSignedCookie, deleteCookie, } from 'hono/cookie'
+import bcrypt from 'bcryptjs';
 
 const app = new Hono();
 
@@ -509,6 +510,7 @@ app.get('/login', (c) => {
             <input type="password" name="password" placeholder="Enter your password" />
           </label>
           <button type="submit">Login</button>
+          <a href="/register">Want to register?</a>
         </form>
       </main>
     </body>
@@ -537,6 +539,7 @@ app.get('/register', (c) => {
             <input type="password" name="password" placeholder="Enter your password" />
           </label>
           <button type="submit">Register</button>
+          <a href="/login">Want to login?</a>
         </form>
       </main>
     </body>
@@ -554,7 +557,9 @@ app.post('/register', async (c) => {
   }
 
   if (password) {
-    await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, password)
+    const saltRounds = 10
+    const hashedPassword = bcrypt.hashSync(password, saltRounds);
+    await c.env.HUZZANDBUZZ_ACCOUNTS.put(customerId, hashedPassword)
 
     const token = await sign({ customerId, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, }, c.env.JWT_SECRET_KEY);
 
@@ -571,7 +576,9 @@ app.post('/login', async (c) => {
   const { customerId, password } = await c.req.parseBody();
   const accountPassword = await c.env.HUZZANDBUZZ_ACCOUNTS.get(customerId)
 
-  if (password === accountPassword) {
+  const isMatch = bcrypt.compareSync(password, accountPassword);
+
+  if (isMatch) {
     const token = await sign({ customerId, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, }, c.env.JWT_SECRET_KEY);
 
     setCookie(c, 'jwt', token, { httpOnly: true });
@@ -740,7 +747,7 @@ app.get('/', (c) => {
         <div class="container mx-auto px-6 text-center">
             <h2 class="text-3xl font-bold mb-8">Ready to Secure Your Email Domain?</h2>
             <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of organizations using Huzz And Buzz for comprehensive DMARC management and email security.</p>
-            <a href="/signup" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Start Free Trial</a>
+            <a href="/register" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50">Start Free Trial</a>
         </div>
     </section>
 
