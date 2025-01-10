@@ -19,3 +19,6 @@ database_id = "4eb8c158-eb83-4492-999c-d94106ba10cb"
 [[kv_namespaces]]
 binding = "HUZZANDBUZZ_ACCOUNTS"
 id = "813ec6c73e6f4fbaad2f442a749a81b6"
+[[kv_namespaces]]
+binding = "JWT_BLOCKLIST"
+id = "daa01d530ebc448eb02525e592569b71"

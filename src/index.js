@@ -62,7 +62,13 @@ app.use('/dashboard/*', async (c, next) => {
       console.log(('Invalid token: missing customer ID', 400))
       return c.redirect('/logout');
     }
+
+    const isJWTBlacklisted = await c.env.JWT_BLOCKLIST.get(tokenToVerify)
     
+    if (isJWTBlacklisted) {
+      console.error('Token in Blacklist:', error)
+      return c.redirect('/logout')
+    }
     c.set('customerId', decodedPayload.customerId)
     
     await next()
@@ -605,14 +611,20 @@ app.post('/login', async (c) => {
   return c.text('Invalid credentials', 401);
 });
 
-app.get('/logout', (c) => {
-  setCookie(c, 'jwt', '', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
-    path: '/',
-    expires: new Date(0)
-  });
+app.get('/logout', async (c) => {
+  const tokenToBlock = getCookie(c, 'jwt')
+
+  if (!tokenToBlock) {
+    console.log(('Token Required', 401))
+    return c.text('There was an unknown error', 500);
+  }
+
+  const decodedPayload = await verify(tokenToBlock, c.env.JWT_SECRET_KEY)
+  
+  await c.env.JWT_BLOCKLIST.put(tokenToBlock, 1, {
+    expiration: decodedPayload.exp,
+  })
+  deleteCookie(c, 'jwt');
   
   return c.redirect('/login');
 });
