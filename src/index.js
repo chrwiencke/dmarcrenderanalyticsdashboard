@@ -114,7 +114,7 @@ app.get('/dashboard/', async (c) => {
   const statsObj = stats?.[0] ?? { total_reports: 0, unique_ips: 0, unique_domains: 0, success_rate: 0 };
 
   const content = html`
-    <h1>DMARC Analytics Overview</h1>
+    <h1>DMARC Analytics Overview for ${customerId}</h1>
     <div class="stats-grid">
       <div class="stat-card">
         <h3>Total Reports</h3>
