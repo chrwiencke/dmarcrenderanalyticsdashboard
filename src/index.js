@@ -103,10 +103,10 @@ app.get('/dashboard/', async (c) => {
   const customerId = c.get('customerId');
   const stats = await fetchData(c.env, `
     SELECT 
-      COUNT(*) as total_reports,
+      SUM(count) as total_reports,
       COUNT(DISTINCT source_ip) as unique_ips,
       COUNT(DISTINCT header_from) as unique_domains,
-      COALESCE(SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0) as success_rate
+      COALESCE(SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN count ELSE 0 END) * 100.0 / NULLIF(SUM(count), 0), 0) as success_rate
     FROM dmarc_reports
     WHERE customer_id = ?1
   `, [customerId]);
@@ -143,9 +143,10 @@ app.get('/dashboard/auth-rates', async (c) => {
   const customerId = c.get('customerId');
 
   const data = await fetchData(c.env, `
-    SELECT date_range_begin, date_range_end, COUNT(*) as total, 
-            SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) as success,
-            SUM(CASE WHEN dkim_result = 0 OR spf_result = 0 THEN 1 ELSE 0 END) as failure
+    SELECT date_range_begin, date_range_end, 
+           SUM(count) as total, 
+           SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN count ELSE 0 END) as success,
+           SUM(CASE WHEN dkim_result = 2 OR spf_result = 2 THEN count ELSE 0 END) as failure
     FROM dmarc_reports
     WHERE customer_id = ?1
     GROUP BY date_range_begin, date_range_end
@@ -175,12 +176,20 @@ app.get('/dashboard/auth-rates', async (c) => {
 app.get('/dashboard/top-senders', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
-    SELECT source_ip, COUNT(*) as total, 
-           SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN 1 ELSE 0 END) as success,
-           SUM(CASE WHEN dkim_result = 0 OR spf_result = 0 THEN 1 ELSE 0 END) as failure
-    FROM dmarc_reports
+    WITH total_count AS (
+      SELECT SUM(count) as total_emails
+      FROM dmarc_reports 
+      WHERE customer_id = ?1
+    )
+    SELECT 
+      source_ip,
+      SUM(count) as total,
+      SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN count ELSE 0 END) as success,
+      SUM(CASE WHEN dkim_result = 2 OR spf_result = 2 THEN count ELSE 0 END) as failure,
+      ROUND(SUM(CASE WHEN dkim_result = 2 OR spf_result = 2 THEN count ELSE 0 END) * 100.0 / SUM(count), 1) as failure_rate
+    FROM dmarc_reports, total_count
     WHERE customer_id = ?1
-    GROUP BY source_ip
+    GROUP BY source_ip, total_emails
     ORDER BY total DESC
     LIMIT 10
   `, [customerId]);
@@ -188,13 +197,20 @@ app.get('/dashboard/top-senders', async (c) => {
   const content = html`
     <h1>Top Sending IP Addresses and Their Performance</h1>
     <table>
-      <tr><th>IP Address</th><th>Total</th><th>Success</th><th>Failure</th></tr>
+      <tr>
+        <th>IP Address</th>
+        <th>Total</th>
+        <th>Success</th>
+        <th>Failure</th>
+        <th>Failure Rate</th>
+      </tr>
       ${data.map(row => html`
         <tr>
           <td>${row.source_ip}</td>
           <td>${row.total}</td>
           <td>${row.success}</td>
           <td>${row.failure}</td>
+          <td>${row.failure_rate}%</td>
         </tr>
       `)}
     </table>
@@ -207,7 +223,7 @@ app.get('/dashboard/top-senders', async (c) => {
 app.get('/dashboard/geo-location', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
-    SELECT source_ip, COUNT(*) as total
+    SELECT source_ip, SUM(count) as total
     FROM dmarc_reports
     WHERE customer_id = ?1
     GROUP BY source_ip
@@ -261,9 +277,10 @@ app.get('/dashboard/geo-location', async (c) => {
 app.get('/dashboard/compliance-trends', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
-    SELECT date_range_begin, date_range_end, COUNT(*) as total, 
-           SUM(CASE WHEN disposition = 1 THEN 1 ELSE 0 END) as compliant,
-           SUM(CASE WHEN disposition = 0 THEN 1 ELSE 0 END) as non_compliant
+    SELECT date_range_begin, date_range_end, 
+           SUM(count) as total,
+           SUM(CASE WHEN disposition = 3 THEN count ELSE 0 END) as compliant,
+           SUM(CASE WHEN disposition < 3 THEN count ELSE 0 END) as non_compliant
     FROM dmarc_reports
     WHERE customer_id = ?1
     GROUP BY date_range_begin, date_range_end
@@ -295,12 +312,15 @@ app.get('/dashboard/failure-analysis', async (c) => {
     SELECT 
       header_from,
       source_ip,
-      COUNT(*) as total_failures,
-      SUM(CASE WHEN dkim_result = 2 THEN 1 ELSE 0 END) as dkim_failures,
-      SUM(CASE WHEN spf_result = 2 THEN 1 ELSE 0 END) as spf_failures,
+      SUM(count) as total_failures,
+      SUM(CASE WHEN dkim_result = 2 THEN count ELSE 0 END) as dkim_failures,
+      SUM(CASE WHEN spf_result = 2 THEN count ELSE 0 END) as spf_failures,
       policy_override_type,
       error,
-      COUNT(*) * 1.0 / SUM(count) as failure_rate
+      CASE 
+        WHEN SUM(count) > 0 THEN 100.0  -- If there are failures, it's 100% failure rate
+        ELSE 0.0
+      END as failure_rate
     FROM dmarc_reports
     WHERE customer_id = ?1 
     AND (dkim_result = 2 OR spf_result = 2)
@@ -328,7 +348,7 @@ app.get('/dashboard/failure-analysis', async (c) => {
           <td>${row.total_failures}</td>
           <td>${row.dkim_failures}</td>
           <td>${row.spf_failures}</td>
-          <td>${(row.failure_rate * 100).toFixed(1)}%</td>
+          <td>${row.failure_rate}%</td>
           <td>${row.policy_override_type || 'None'}</td>
           <td>${row.error || 'None'}</td>
         </tr>
@@ -344,18 +364,16 @@ app.get('/dashboard/domain-summary', async (c) => {
   const customerId = c.get('customerId');
   const data = await fetchData(c.env, `
     SELECT 
-      ds.domain,
-      ds.report_count,
-      ds.first_seen,
-      ds.last_seen,
-      COUNT(DISTINCT dr.source_ip) as unique_ips,
-      SUM(CASE WHEN dr.dkim_result = 1 AND dr.spf_result = 1 THEN 1 ELSE 0 END) as passed,
-      COUNT(*) as total
-    FROM domain_stats ds
-    LEFT JOIN dmarc_reports dr ON ds.domain = dr.header_from
-    WHERE ds.customer_id = ?1
-    GROUP BY ds.domain
-    ORDER BY ds.report_count DESC
+      header_from as domain,
+      COUNT(DISTINCT report_id) as report_count,
+      MIN(created_at) as first_seen,
+      MAX(created_at) as last_seen,
+      COUNT(DISTINCT source_ip) as unique_ips,
+      ROUND(SUM(CASE WHEN dkim_result = 1 AND spf_result = 1 THEN count ELSE 0 END) * 100.0 / NULLIF(SUM(count), 0), 1) as pass_rate
+    FROM dmarc_reports
+    WHERE customer_id = ?1
+    GROUP BY header_from
+    ORDER BY report_count DESC
   `, [customerId]);
   
   const content = html`
@@ -376,7 +394,7 @@ app.get('/dashboard/domain-summary', async (c) => {
           <td>${new Date(row.first_seen).toLocaleDateString()}</td>
           <td>${new Date(row.last_seen).toLocaleDateString()}</td>
           <td>${row.unique_ips}</td>
-          <td>${((row.passed / row.total) * 100).toFixed(2)}%</td>
+          <td>${row.pass_rate}%</td>
         </tr>
       `)}
     </table>
