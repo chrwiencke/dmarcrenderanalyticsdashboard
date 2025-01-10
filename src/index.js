@@ -622,7 +622,7 @@ app.get('/', (c) => {
             <div class="space-x-6">
                 <a href="#features" class="hover:text-blue-200">Features</a>
                 <a href="#how-it-works" class="hover:text-blue-200">How It Works</a>
-                <a href="/dashboard" class="hover:text-blue-200">Dashboard</a>
+                <a href="/dashboard/" class="hover:text-blue-200">Dashboard</a>
                 <a href="/login" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50">Login</a>
             </div>
         </nav>
@@ -764,7 +764,7 @@ app.get('/', (c) => {
                     <ul class="space-y-2 text-sm">
                         <li><a href="#features" class="hover:text-white">Features</a></li>
                         <li><a href="#pricing" class="hover:text-white">Pricing</a></li>
-                        <li><a href="#dashboard" class="hover:text-white">Dashboard</a></li>
+                        <li><a href="/dashboard/" class="hover:text-white">Dashboard</a></li>
                     </ul>
                 </div>
                 <div>
